@@ -1,0 +1,162 @@
+# Setup
+c-->from imp import reload
+c-->import exam
+c-->reload(exam)
+c-->from exam import Table
+
+# Test __init__
+c-->t = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+e-->t.name-->Employee
+e-->t.fields-->['Name', 'EmpId', 'DeptName']
+e-->[t.checks[0](i) for i in ['abc', 0, ['abc']]]-->[True, False, False]
+e-->[t.checks[1](i) for i in ['abc', 1000, 9999, 55555]]-->[False, True, True, False]
+e-->[t.checks[2](i) for i in [0, 'Finance', 'Sales', 'Production']]-->[False, True, True, False]
+e-->t.records-->[]
+c-->t = Table('Department', ['DeptName', 'Manager'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+e-->t.name-->Department
+e-->t.fields-->['DeptName', 'Manager']
+e-->[t.checks[0](i) for i in ['abc', 0, ['abc']]]-->[True, False, False]
+e-->[t.checks[1](i) for i in [0, 'Finance', 'Sales', 'Production']]-->[False, True, True, True]
+e-->t.records-->[]
+^-->t = Table(9,[],[])-->AssertionError
+^-->t = Table('Test',(),[])-->AssertionError
+^-->t = Table('Test',['a',0,'b'],[])-->AssertionError
+^-->t = Table('Test',['a','b','a'],[])-->AssertionError
+^-->t = Table('Test',['a','b'],())-->AssertionError
+^-->t = Table('Test',['a','b'],[lambda x : True,'b'])-->AssertionError
+^-->t = Table('Test',['a','b'],[lambda x : True])-->AssertionError
+^-->t = Table('Test',['a','b'],[lambda x : True,lambda x : True,lambda x : True])-->AssertionError
+
+# Test add_record
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.add_record('Bob',2241,'Sales')
+e-->employee.records-->[['Bob', 2241, 'Sales']]
+c-->employee.add_record('Cathy',3401,'Finance')
+e-->employee.records-->[['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance']]
+c-->employee.add_record('Alice',3415,'Finance')
+c-->employee.add_record('David',2202,'Sales')
+e-->employee.records-->[['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+^-->employee.add_record(0,2241,'Sales')-->AssertionError
+^-->employee.add_record('Goober',10,'Sales')-->AssertionError
+^-->employee.add_record('Goober',2241,'Production')-->AssertionError
+^-->employee.add_record('Goober',2241)-->AssertionError
+^-->employee.add_record('Goober',2241,'Sales','Sales')-->AssertionError
+c-->department = Table('Department', ['Manager', 'DeptName'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+c-->department.add_record('George','Finance')
+c-->department.add_record('Harriet','Sales')
+c-->department.add_record('Charles','Production')
+e-->department.records-->[['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+
+# Test __call__
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->department = Table('Department', ['Manager', 'DeptName'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+c-->department.records = [['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+e-->employee('Name')-->0
+e-->employee('EmpId')-->1
+e-->employee('DeptName')-->2
+e-->department('Manager')-->0
+e-->department('DeptName')-->1
+^-->employee('Manager')-->AssertionError
+^-->department('Name')-->AssertionError
+
+# Test __getitem__
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->department = Table('Department', ['Manager', 'DeptName'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+c-->department.records = [['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+e-->employee[0]-->['Bob', 2241, 'Sales']
+e-->employee[3]-->['David', 2202, 'Sales']
+e-->department[1]-->['Harriet', 'Sales']
+e-->department[2]-->['Charles', 'Production']
+^-->employee[-1]-->AssertionError
+^-->department[3]-->AssertionError
+e-->employee[0,'Name']-->Bob
+e-->employee[0,'DeptName']-->Sales
+e-->employee[2,'EmpId']-->3415
+e-->employee[2,'DeptName']-->Finance
+e-->department[0,'DeptName']-->Finance
+e-->department[2,'Manager']-->Charles
+^-->employee['random']-->IndexError
+^-->employee[[0,'Name','EmpId']]-->IndexError
+
+# Test select_records
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->sales = employee.select_records('Sales',lambda r : r[employee('DeptName')] == 'Sales')
+e-->sales.records-->[['Bob', 2241, 'Sales'], ['David', 2202, 'Sales']]
+e-->employee.records-->[['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->finance = employee.select_records('Finance',lambda r : r[employee('DeptName')] == 'Finance')
+e-->finance.records-->[['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance']]
+c-->production = employee.select_records('Production',lambda r : r[employee('DeptName')] == 'Production')
+e-->production.records-->[]
+
+# Test project
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->department = Table('Department', ['Manager', 'DeptName'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+c-->department.records = [['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+c-->fields = list(employee.fields)
+c-->checks = list(employee.checks)
+c-->employee.project('Name','DeptName')
+==-->employee.fields-->[fields[0],fields[2]]
+==-->employee.checks-->[checks[0],checks[2]]
+e-->employee.records-->[['Bob', 'Sales'], ['Cathy', 'Finance'], ['Alice', 'Finance'], ['David', 'Sales']]
+c-->fields = list(department.fields)
+c-->checks = list(department.checks)
+c-->department.project('DeptName')
+==-->department.fields-->[fields[1]]
+==-->department.checks-->[checks[1]]
+e-->department.records-->[['Finance'], ['Sales'], ['Production']]
+^-->employee.project('Name','LastName')-->AssertionError
+^-->employee.project('Name','Name')-->AssertionError
+
+# Test __iter__
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->department = Table('Department', ['Manager', 'DeptName'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+c-->department.records = [['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+e-->[i for i in employee]-->[(0, 'DeptName', 'Sales'), (0, 'EmpId', 2241), (0, 'Name', 'Bob'), (1, 'DeptName', 'Finance'), (1, 'EmpId', 3401), (1, 'Name', 'Cathy'), (2, 'DeptName', 'Finance'), (2, 'EmpId', 3415), (2, 'Name', 'Alice'), (3, 'DeptName', 'Sales'), (3, 'EmpId', 2202), (3, 'Name', 'David')]
+e-->[i for i in department]-->[(0, 'DeptName', 'Finance'), (0, 'Manager', 'George'), (1, 'DeptName', 'Sales'), (1, 'Manager', 'Harriet'), (2, 'DeptName', 'Production'), (2, 'Manager', 'Charles')]
+e-->employee.records-->[['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+e-->department.records-->[['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+
+# Test sort: 1 point extra credit
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->employee.sort_records('Name')
+e-->employee.records-->[['Alice', 3415, 'Finance'], ['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['David', 2202, 'Sales']]
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->employee.sort_records('EmpId', lambda ei : ei% 10)
+e-->employee.records-->[['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['David', 2202, 'Sales'], ['Alice', 3415, 'Finance']]
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->employee.sort_records('EmpId', lambda ei : ei% 10,reverse=True)
+e-->employee.records-->[['Alice', 3415, 'Finance'], ['David', 2202, 'Sales'], ['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance']]
+
+# Test +: 1 point extra credit
+c-->employee = Table('Employee', ['Name', 'EmpId', 'DeptName'], [lambda v: type(v) is str, lambda v: type(v) is int and 1000<=v<=9999, lambda v: v in ['Finance','Sales']])
+c-->employee.records = [['Bob', 2241, 'Sales'], ['Cathy', 3401, 'Finance'], ['Alice', 3415, 'Finance'], ['David', 2202, 'Sales']]
+c-->department = Table('Department', ['Manager', 'DeptName'], [lambda v: type(v) is str, lambda v: v in ['Finance', 'Sales', 'Production']])
+c-->department.records = [['George', 'Finance'], ['Harriet', 'Sales'], ['Charles', 'Production']]
+c-->join1 = employee+department
+e-->join1.name-->Employee+Department
+e-->join1.fields-->['Name', 'EmpId', 'DeptName', 'Manager']
+==-->set(tuple(l) for l in join1.records)-->{('Bob', 2241, 'Sales', 'Harriet'), ('Cathy', 3401, 'Finance', 'George'), ('Alice', 3415, 'Finance', 'George'), ('David', 2202, 'Sales', 'Harriet')}
+
+c-->join2 = department+employee
+e-->join2.name-->Department+Employee
+e-->join2.fields-->['Manager', 'DeptName', 'Name', 'EmpId']
+==-->set(tuple(l) for l in join2.records)-->{('George', 'Finance', 'Cathy', 3401), ('George', 'Finance', 'Alice', 3415), ('Harriet', 'Sales', 'Bob', 2241), ('Harriet', 'Sales', 'David', 2202)}
+
+c-->students = Table('Students',['Name', 'School', 'Year'],[lambda v: type(v) is str, lambda v: v in ['ICS','Science'], lambda v: v in range(2000,2005)])
+c-->students.records = [['Alice','ICS',2000],['Bob','Science',2001]]
+c-->schools = Table('Schools',['Degrees', 'School', 'Year'],[lambda v: type(v) is tuple, lambda v: v in ['ICS','Science'], lambda v: v in range(2000,2005)])
+c-->schools.records = [[('BS','MS'),'ICS',2000],[('BS','MS','PhD'),'ICS',2001],[('BS','MS','PhD'),'Science',2000],[('MS','PhD'),'Science',2001]]
+c-->join3 = students+schools
+e-->join3.name-->Students+Schools
+e-->join3.fields-->['Name', 'School', 'Year', 'Degrees']
+==-->set(tuple(l) for l in join3.records)-->{('Alice', 'ICS', 2000, ('BS', 'MS')), ('Bob', 'Science', 2001, ('MS', 'PhD'))}
+
+
+
+
